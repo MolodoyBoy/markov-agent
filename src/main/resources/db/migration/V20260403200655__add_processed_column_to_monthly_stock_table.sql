@@ -1,0 +1,2 @@
+ALTER TABLE daily_stock ADD COLUMN IF NOT EXISTS processed BOOLEAN DEFAULT FALSE;
+CREATE INDEX ON daily_stock(processed);

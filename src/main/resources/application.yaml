@@ -1,0 +1,56 @@
+server:
+  port: 7272
+
+spring:
+  application:
+    name: markov-agent
+  datasource:
+    name: postgres
+    username: ${MARKOV_DB_USERNAME}
+    password: ${MARKOV_DB_PASSWORD}
+    url: jdbc:postgresql://${MARKOV_DB_HOST}:${MARKOV_DB_PORT}/${MARKOV_DB_NAME}
+    hikari:
+      maximum-pool-size: 40
+      connection-timeout: 2000
+  flyway:
+    out-of-order: true
+  ai:
+    openai:
+      api_key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-5
+
+bot:
+    updates_url: https://${SERVER_DOMAIN}/updates
+external_api:
+    twelve_data:
+        url: https://api.twelvedata.com/time_series
+        api_key: ${EXTERNAL_API_KEY}
+        interval: 1day
+        format: JSON
+        chunk_size: 4
+    telegram_api:
+      bot:
+        url: https://api.telegram.org/bot${TELEGRAM_API_BOT_TOKEN}/setWebhook
+
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      http:
+        registerHealthIndicator: true
+        recordExceptions:
+          - org.springframework.web.client.ResourceAccessException
+    instances:
+      TwelveDataApi:
+        baseConfig: http
+
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 5s
+    instances:
+      TwelveDataApi:
+        baseConfig: default

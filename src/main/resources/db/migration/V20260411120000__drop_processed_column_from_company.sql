@@ -1,0 +1,2 @@
+ALTER TABLE company DROP COLUMN IF EXISTS processed;
+
