@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public class DbCompanySource implements CompanySource, CompanySearchSource {
+public class DbCompanySource implements CompanySource {
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -71,28 +71,6 @@ public class DbCompanySource implements CompanySource, CompanySearchSource {
             "WHERE c.id >= ? ORDER BY c.id LIMIT ?";
 
         return jdbcTemplate.query(sql, companyRowMapper(), start, batchSize);
-    }
-
-    @Override
-    public DailyStock searchLatestDailyStockReturn(String query) {
-        String sql = "SELECT company_id, stock_date, value FROM company c " +
-            "inner join daily_stock_return ms on c.id = ms.company_id " +
-            "WHERE (company_name = ? or ticker = ?) " +
-            "ORDER BY ms.company_id, ms.stock_date DESC " +
-            "LIMIT 1;";
-
-        RowMapper<DailyStock> rowMapper = (rs, rowNum) -> new DailyStock(
-            rs.getInt("company_id"),
-            rs.getBigDecimal("value"),
-            rs.getDate("stock_date").toLocalDate()
-        );
-
-        List<DailyStock> dailyStockReturns = jdbcTemplate.query(sql, rowMapper, query, query);
-        if (dailyStockReturns.isEmpty()) {
-            return null;
-        }
-
-        return dailyStockReturns.get(0);
     }
 
     private RowMapper<Company> companyRowMapper() {
