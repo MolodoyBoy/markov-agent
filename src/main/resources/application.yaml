@@ -54,3 +54,7 @@ resilience4j:
     instances:
       TwelveDataApi:
         baseConfig: default
+
+logging:
+  pattern:
+    level: '%5p [${spring.application.name:},%X{trace_id:-},%X{span_id:-}]'

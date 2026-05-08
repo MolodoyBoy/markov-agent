@@ -1,5 +1,6 @@
 plugins {
     java
+    id("java-library")
     id("org.springframework.boot") version "4.0.5"
     id("com.google.cloud.tools.jib") version "3.4.1"
     id("io.spring.dependency-management") version "1.1.7"
@@ -26,7 +27,11 @@ repositories {
     mavenCentral()
 }
 
+val agent by configurations.creating
+
 dependencies {
+    api("net.logstash.logback:logstash-logback-encoder:7.3")
+
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -38,6 +43,8 @@ dependencies {
     implementation("org.springframework:spring-aspects:7.0.6")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
+    agent("io.opentelemetry.javaagent:opentelemetry-javaagent:2.27.0")
+
     implementation(platform("org.springframework.ai:spring-ai-bom:2.0.0-M2"))
 
     implementation("org.springframework.ai:spring-ai-openai")
@@ -47,12 +54,6 @@ dependencies {
     compileOnly("org.projectlombok:lombok")
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-redis-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-jdbc-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<Test> {
@@ -81,4 +82,10 @@ jib {
         jvmFlags = listOf("-XX:MaxRAMPercentage=80")
         mainClass = "com.markov.agent.MarkovAgentApplication"
     }
+}
+
+val copyAgent = tasks.register<Copy>("copyAgent") {
+    from(agent.singleFile)
+    into(layout.buildDirectory.dir("agent"))
+    rename("opentelemetry-javaagent-.*\\.jar", "opentelemetry-javaagent.jar")
 }
