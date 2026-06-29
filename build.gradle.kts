@@ -12,7 +12,7 @@ description = "markov-agent"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
         vendor = JvmVendorSpec.ADOPTIUM
     }
 }
@@ -66,7 +66,7 @@ val dockerHubPassword = System.getenv("DOCKER_HUB_PASSWORD")
 
 jib {
     from {
-        image = "eclipse-temurin:21-jdk"
+        image = "eclipse-temurin:25-jdk"
     }
 
     to {

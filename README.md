@@ -26,7 +26,7 @@ Markov Agent is a Spring Boot service that predicts stock price movements using 
 
 ### Tech Stack
 
-- **Java 21**, **Spring Boot 4**
+- **Java 25**, **Spring Boot 4**
 - **Spring AI** (OpenAI integration)
 - **PostgreSQL** + **Flyway** migrations
 - **Resilience4j** (circuit breaker & retry)
@@ -55,5 +55,5 @@ The following environment variables **must** be set before starting the service:
 ./gradlew bootRun
 ```
 
-> **Prerequisites:** Java 21, a running PostgreSQL instance.
+> **Prerequisites:** Java 25, a running PostgreSQL instance.
 

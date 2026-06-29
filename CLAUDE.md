@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Docker image (Jib)**: `IMAGE_VERSION=<tag> DOCKER_HUB_PASSWORD=<pw> ./gradlew jib`
 - **Local infra**: `cd deploy && docker compose up -d` (starts PostgreSQL on port 5432)
 
-Java 21 (Temurin) is required. Environment variables are loaded from `.env/local.env` for local development.
+Java 25 (Temurin) is required. Environment variables are loaded from `.env/local.env` for local development.
 
 ## Architecture
 
