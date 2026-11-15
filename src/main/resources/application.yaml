@@ -23,6 +23,8 @@ spring:
 
 bot:
     updates_url: https://${SERVER_DOMAIN}/updates
+    max_message_length: 225
+    message_cache_ttl: 10m
 external_api:
     twelve_data:
         url: https://api.twelvedata.com/time_series

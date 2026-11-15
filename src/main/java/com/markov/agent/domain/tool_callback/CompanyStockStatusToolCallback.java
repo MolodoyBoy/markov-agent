@@ -1,14 +1,21 @@
 package com.markov.agent.domain.tool_callback;
 
+import static org.slf4j.LoggerFactory.getLogger;
+
+import com.markov.agent.domain.mem_cache.MessageCache;
 import com.markov.agent.domain.open_ai.ModelRequest;
 import com.markov.agent.domain.open_ai.ModelRequestMapper;
 import com.markov.agent.domain.open_ai.ModelResponseParsingException;
+import com.markov.agent.domain.service.MessageService;
 import com.markov.agent.domain.source.CompanySearchSource;
 import com.markov.agent.domain.source.MarkovChainSource;
 import com.markov.agent.domain.value_object.MarkovChain;
 import com.markov.agent.domain.value_object.MarkovChainPrediction;
 import com.markov.agent.domain.value_object.DailyStock;
 import com.markov.agent.domain.value_object.State;
+
+import org.slf4j.Logger;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.definition.ToolDefinition;
@@ -16,6 +23,10 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CompanyStockStatusToolCallback implements ToolCallback {
+
+    private static final Logger logger = getLogger(MessageService.class);
+
+    public static final String MESSAGE_ID_CONTEXT_KEY = "messageId";
 
     private static final String TOOL_NAME = "get_company_stock_state";
     private static final String COMPANY_NOT_FOUND_RESPONSE = "Company not found";
@@ -37,13 +48,17 @@ public class CompanyStockStatusToolCallback implements ToolCallback {
             }
             """;
 
+
+    private final MessageCache messageCache;
     private final MarkovChainSource markovChainSource;
     private final ModelRequestMapper modelRequestMapper;
     private final CompanySearchSource companySearchSource;
 
-    public CompanyStockStatusToolCallback(MarkovChainSource markovChainSource,
+    public CompanyStockStatusToolCallback(MessageCache messageCache,
+                                          MarkovChainSource markovChainSource,
                                           ModelRequestMapper modelRequestMapper,
                                           CompanySearchSource companySearchSource) {
+        this.messageCache = messageCache;
         this.markovChainSource = markovChainSource;
         this.modelRequestMapper = modelRequestMapper;
         this.companySearchSource = companySearchSource;
@@ -65,6 +80,13 @@ public class CompanyStockStatusToolCallback implements ToolCallback {
 
     @Override
     public String call(String toolInput) {
+        throw new UnsupportedOperationException("Tool context with " + MESSAGE_ID_CONTEXT_KEY + " is required");
+    }
+
+    @Override
+    public String call(String toolInput, ToolContext toolContext) {
+        long messageId = (Long) toolContext.getContext().get(MESSAGE_ID_CONTEXT_KEY);
+
         ModelRequest modelRequest;
         try {
             modelRequest = modelRequestMapper.map(toolInput);
@@ -85,6 +107,11 @@ public class CompanyStockStatusToolCallback implements ToolCallback {
 
         State mostProbableState = prediction.getMostProbableState();
 
-        return mostProbableState.getDescription();
+        String description = mostProbableState.getDescription();
+        messageCache.save(messageId, description);
+
+        logger.info("Received response for message id {}", messageId);
+
+        return description;
     }
 }

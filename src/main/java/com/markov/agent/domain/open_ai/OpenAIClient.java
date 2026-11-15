@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class OpenAIClient implements AIClient {
@@ -28,11 +29,12 @@ public class OpenAIClient implements AIClient {
     }
 
     @Override
-    public String getResponse(String request) {
+    public String getResponse(long id, String request) {
         Prompt prompt = buildPrompt(request);
 
         return chatClient.prompt(prompt)
             .toolCallbacks(companyStockStatusToolCallback)
+            .toolContext(Map.of(CompanyStockStatusToolCallback.MESSAGE_ID_CONTEXT_KEY, id))
             .call()
             .content();
     }
