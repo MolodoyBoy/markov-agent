@@ -7,4 +7,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record Update(
     @JsonProperty("update_id") long updateId,
     Message message
-) {}
+) {
+
+    public String text() {
+        return message.text();
+    }
+}

@@ -2,7 +2,6 @@ package com.markov.agent.domain.service;
 
 import com.markov.agent.domain.mem_cache.CachedMessage;
 import com.markov.agent.domain.mem_cache.MessageCache;
-import com.markov.agent.rest_api.dto.Message;
 import com.markov.agent.rest_api.dto.Update;
 import com.markov.agent.domain.source.AIClient;
 import org.slf4j.Logger;
@@ -50,11 +49,10 @@ public class MessageService {
     }
 
     private String processNewMessage(Update update) {
-        Message message = update.message();
 
-        String text = message.text();
+        logger.info("Received message with id: {}", update.updateId());
 
-        logger.info("Received message: {}", text);
+        String text = update.text();
 
         if (text.length() > maxMessageLength) {
             return TOO_LONG_MESSAGE;
