@@ -59,8 +59,8 @@ public class DbMarkovChainSource implements MarkovChainSource {
     public MarkovChainPrediction getMarkovChainPrediction(DailyStock dailyStock) {
         String classifySql = """
             SELECT CASE
-                WHEN ? < s.avg_value - 0.35 * s.std_dev_value THEN 1
-                WHEN ? > s.avg_value + 0.35 * s.std_dev_value THEN 3
+                WHEN ? < s.avg_value - k.scale * s.std_dev_value THEN 1
+                WHEN ? > s.avg_value + k.scale * s.std_dev_value THEN 3
                 ELSE 2
             END AS state
             FROM (
@@ -69,6 +69,7 @@ public class DbMarkovChainSource implements MarkovChainSource {
                     MAX(CASE WHEN id = 2 THEN index_value END) AS std_dev_value
                 FROM math_index
             ) s
+            CROSS JOIN markov_chain_scale k
             """;
 
         Integer classifiedState = jdbcTemplate.queryForObject(
@@ -109,6 +110,20 @@ public class DbMarkovChainSource implements MarkovChainSource {
     }
 
     @Override
+    public BigDecimal getMathIndex(MathIndex mathIndex) {
+        return jdbcTemplate.queryForObject(
+            "SELECT index_value FROM math_index WHERE id = ?",
+            BigDecimal.class,
+            mathIndex.getIndex()
+        );
+    }
+
+    @Override
+    public void updateScale(BigDecimal scale) {
+        jdbcTemplate.update("UPDATE markov_chain_scale SET scale = ?", scale);
+    }
+
+    @Override
     public void updateMarkovChain(State from, State to, LocalDateTime fromDate) {
         String sql = """
            
@@ -117,7 +132,8 @@ public class DbMarkovChainSource implements MarkovChainSource {
                    WITH stats AS (
                         SELECT
                             MAX(CASE WHEN id = 1 THEN index_value END) AS avg_value,
-                            MAX(CASE WHEN id = 2 THEN index_value END) AS std_dev_value
+                            MAX(CASE WHEN id = 2 THEN index_value END) AS std_dev_value,
+                            (SELECT scale FROM markov_chain_scale) AS scale
                         FROM math_index
                         ),
                        classified AS (
@@ -125,8 +141,8 @@ public class DbMarkovChainSource implements MarkovChainSource {
                                 msr.company_id,
                                 msr.stock_date,
                             CASE
-                            WHEN msr.value < s.avg_value - 0.35 * s.std_dev_value THEN 1
-                                WHEN msr.value > s.avg_value + 0.35 * s.std_dev_value THEN 3
+                            WHEN msr.value < s.avg_value - s.scale * s.std_dev_value THEN 1
+                                WHEN msr.value > s.avg_value + s.scale * s.std_dev_value THEN 3
                             ELSE 2
                             END AS state
                     FROM daily_stock_return msr

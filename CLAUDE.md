@@ -33,11 +33,17 @@ A fourth small package, **`application`**, handles startup argument parsing (e.g
 
 `DailyStockImporter` (cron midnight) → fetches latest daily stock for existing companies in batches of 50 → calculates returns → triggers `MarkovChainImporter`.
 
-`MarkovChainImporter` → recomputes math indices (AVG, STD_DEV) and the full 3×3 transition probability matrix (DOWN/STABLE/UP) over a 36-month sliding window. Uses PostgreSQL advisory locks to prevent concurrent runs.
+`MarkovChainImporter` → over a 36-month sliding window: recomputes math indices (AVG, STD_DEV), re-optimises the threshold scale with `ScaleOptimizer`, then recomputes the full 3×3 transition probability matrix (DOWN/STABLE/UP). Uses PostgreSQL advisory locks to prevent concurrent runs.
+
+### State thresholds and the scale optimiser
+
+A daily return is DOWN below `AVG − scale × STD_DEV`, UP above `AVG + scale × STD_DEV`, STABLE otherwise. `scale` lives in the single-row table `markov_chain_scale` (seeded with 0.35) and is read by SQL in `DbMarkovChainSource` for both matrix building and classification; it is never computed at request time.
+
+`data_loader.optimizer.ScaleOptimizer` finds `scale` with Differential Evolution (`DifferentialEvolution`, DE/rand/1/bin, fixed seed, bounds [0.01, 2.0]). Fitness: build the transition matrix on the first 80% of dates, predict the next state as the row argmax on the last 20%, score by macro-F1 over the three states (accuracy and Cohen's kappa were rejected because they reward scales that merge or empty a state). Transitions use the same rule as the SQL: only consecutive calendar days count. If there are not enough transitions, the stored scale is kept.
 
 ### AI prediction flow
 
-Telegram message → `UpdatesController` → `MessageService` → `OpenAIClient` → GPT-5 with system prompt (`prompts/system-prompt.st`) → LLM calls `get_company_stock_state` tool → `CompanyStockStatusToolCallback` classifies latest stock return into a state using AVG ± 0.35×STD_DEV thresholds, then multiplies through the transition matrix for multi-day predictions → returns most probable state.
+Telegram message → `UpdatesController` → `MessageService` → `OpenAIClient` → GPT-5 with system prompt (`prompts/system-prompt.st`) → LLM calls `get_company_stock_state` tool → `CompanyStockStatusToolCallback` classifies latest stock return into a state using AVG ± scale×STD_DEV thresholds (scale from `markov_chain_scale`), then multiplies through the transition matrix for multi-day predictions → returns most probable state.
 
 ### Key design patterns
 
@@ -47,9 +53,13 @@ Telegram message → `UpdatesController` → `MessageService` → `OpenAIClient`
 
 ### Database
 
-PostgreSQL with Flyway migrations in `src/main/resources/db/migration/`. Key tables: `company`, `daily_stock`, `daily_stock_return`, `markov_chain`, `math_index`, `new_companies_queue`. Flyway is configured with `out-of-order: true`.
+PostgreSQL with Flyway migrations in `src/main/resources/db/migration/`. Key tables: `company`, `daily_stock`, `daily_stock_return`, `markov_chain`, `math_index`, `markov_chain_scale` (one row, one column), `new_companies_queue`. Flyway is configured with `out-of-order: true`.
 
 All data access uses raw JDBC (`JdbcTemplate`), no ORM.
+
+### Tests
+
+Only plain JUnit unit tests exist (`src/test`, optimizer package); there are no database or Spring-context tests, so SQL changes must be checked against a real PostgreSQL manually.
 
 ### CI/CD
 
